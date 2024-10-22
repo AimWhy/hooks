@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useState } from 'react';
 import useDeepCompareEffect from '../index';
 
@@ -8,7 +8,7 @@ describe('useDeepCompareEffect', () => {
       const [x, setX] = useState(0);
       const [y, setY] = useState({});
       useDeepCompareEffect(() => {
-        setX((x) => x + 1);
+        setX((prevState) => prevState + 1);
       }, [y]);
       return { x, setY };
     });

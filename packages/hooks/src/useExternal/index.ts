@@ -1,10 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 
-export interface Options {
-  type?: 'js' | 'css';
+type JsOptions = {
+  type: 'js';
+  js?: Partial<HTMLScriptElement>;
+  keepWhenUnused?: boolean;
+};
+
+type CssOptions = {
+  type: 'css';
+  css?: Partial<HTMLStyleElement>;
+  keepWhenUnused?: boolean;
+};
+
+type DefaultOptions = {
+  type?: never;
   js?: Partial<HTMLScriptElement>;
   css?: Partial<HTMLStyleElement>;
-}
+  keepWhenUnused?: boolean;
+};
+
+export type Options = JsOptions | CssOptions | DefaultOptions;
 
 // {[path]: count}
 // remove external when no used
@@ -12,12 +27,14 @@ const EXTERNAL_USED_COUNT: Record<string, number> = {};
 
 export type Status = 'unset' | 'loading' | 'ready' | 'error';
 
-interface loadResult {
+interface LoadResult {
   ref: Element;
   status: Status;
 }
 
-const loadScript = (path: string, props = {}): loadResult => {
+type LoadExternal = <T>(path: string, props?: Partial<T>) => LoadResult;
+
+const loadScript: LoadExternal = (path, props = {}) => {
   const script = document.querySelector(`script[src="${path}"]`);
 
   if (!script) {
@@ -43,7 +60,7 @@ const loadScript = (path: string, props = {}): loadResult => {
   };
 };
 
-const loadCss = (path: string, props = {}): loadResult => {
+const loadCss: LoadExternal = (path, props = {}) => {
   const css = document.querySelector(`link[href="${path}"]`);
   if (!css) {
     const newCss = document.createElement('link');
@@ -126,7 +143,7 @@ const useExternal = (path?: string, options?: Options) => {
 
       EXTERNAL_USED_COUNT[path] -= 1;
 
-      if (EXTERNAL_USED_COUNT[path] === 0) {
+      if (EXTERNAL_USED_COUNT[path] === 0 && !options?.keepWhenUnused) {
         ref.current?.remove();
       }
 

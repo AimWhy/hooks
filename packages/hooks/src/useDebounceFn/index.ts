@@ -1,4 +1,4 @@
-import debounce from 'lodash/debounce';
+import { debounce } from '../utils/lodash-polyfill';
 import { useMemo } from 'react';
 import type { DebounceOptions } from '../useDebounce/debounceOptions';
 import useLatest from '../useLatest';
@@ -6,7 +6,7 @@ import useUnmount from '../useUnmount';
 import { isFunction } from '../utils';
 import isDev from '../utils/isDev';
 
-type noop = (...args: any) => any;
+type noop = (...args: any[]) => any;
 
 function useDebounceFn<T extends noop>(fn: T, options?: DebounceOptions) {
   if (isDev) {

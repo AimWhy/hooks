@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import useEventListener from '../useEventListener';
 import useMemoizedFn from '../useMemoizedFn';
 import useRequest from '../useRequest';
@@ -15,6 +15,7 @@ const useInfiniteScroll = <TData extends Data>(
     target,
     isNoMore,
     threshold = 100,
+    direction = 'bottom',
     reloadDeps = [],
     manual,
     onBefore,
@@ -25,22 +26,31 @@ const useInfiniteScroll = <TData extends Data>(
 
   const [finalData, setFinalData] = useState<TData>();
   const [loadingMore, setLoadingMore] = useState(false);
+  const isScrollToTop = direction === 'top';
+  // lastScrollTop is used to determine whether the scroll direction is up or down
+  const lastScrollTop = useRef<number>();
+  // scrollBottom is used to record the distance from the bottom of the scroll bar
+  const scrollBottom = useRef<number>(0);
 
   const noMore = useMemo(() => {
     if (!isNoMore) return false;
     return isNoMore(finalData);
   }, [finalData]);
 
-  const { loading, run, runAsync, cancel } = useRequest(
+  const { loading, error, run, runAsync, cancel } = useRequest(
     async (lastData?: TData) => {
       const currentData = await service(lastData);
       if (!lastData) {
-        setFinalData(currentData);
+        setFinalData({
+          ...currentData,
+          list: [...(currentData.list ?? [])],
+        });
       } else {
         setFinalData({
           ...currentData,
-          // @ts-ignore
-          list: [...lastData.list, ...currentData.list],
+          list: isScrollToTop
+            ? [...currentData.list, ...(lastData.list ?? [])]
+            : [...(lastData.list ?? []), ...currentData.list],
         });
       }
       return currentData;
@@ -54,41 +64,67 @@ const useInfiniteScroll = <TData extends Data>(
       onBefore: () => onBefore?.(),
       onSuccess: (d) => {
         setTimeout(() => {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          scrollMethod();
+          if (isScrollToTop) {
+            let el = getTargetElement(target);
+            el = el === document ? document.documentElement : el;
+            if (el) {
+              const scrollHeight = getScrollHeight(el);
+              (el as Element).scrollTo(0, scrollHeight - scrollBottom.current);
+            }
+          } else {
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            scrollMethod();
+          }
         });
+
         onSuccess?.(d);
       },
       onError: (e) => onError?.(e),
     },
   );
 
-  const loadMore = () => {
+  const loadMore = useMemoizedFn(() => {
     if (noMore) return;
     setLoadingMore(true);
     run(finalData);
-  };
+  });
 
-  const loadMoreAsync = () => {
+  const loadMoreAsync = useMemoizedFn(() => {
     if (noMore) return Promise.reject();
     setLoadingMore(true);
     return runAsync(finalData);
+  });
+
+  const reload = () => {
+    setLoadingMore(false);
+    return run();
   };
 
-  const reload = () => run();
-  const reloadAsync = () => runAsync();
+  const reloadAsync = () => {
+    setLoadingMore(false);
+    return runAsync();
+  };
 
   const scrollMethod = () => {
     const el = getTargetElement(target);
-    if (!el) {
-      return;
-    }
+    if (!el) return;
 
-    const scrollTop = getScrollTop(el);
-    const scrollHeight = getScrollHeight(el);
-    const clientHeight = getClientHeight(el);
+    const targetEl = el === document ? document.documentElement : el;
+    const scrollTop = getScrollTop(targetEl);
+    const scrollHeight = getScrollHeight(targetEl);
+    const clientHeight = getClientHeight(targetEl);
 
-    if (scrollHeight - scrollTop <= clientHeight + threshold) {
+    if (isScrollToTop) {
+      if (
+        lastScrollTop.current !== undefined &&
+        lastScrollTop.current > scrollTop &&
+        scrollTop <= threshold
+      ) {
+        loadMore();
+      }
+      lastScrollTop.current = scrollTop;
+      scrollBottom.current = scrollHeight - scrollTop;
+    } else if (scrollHeight - scrollTop <= clientHeight + threshold) {
       loadMore();
     }
   };
@@ -111,11 +147,12 @@ const useInfiniteScroll = <TData extends Data>(
   return {
     data: finalData,
     loading: !loadingMore && loading,
+    error,
     loadingMore,
     noMore,
 
-    loadMore: useMemoizedFn(loadMore),
-    loadMoreAsync: useMemoizedFn(loadMoreAsync),
+    loadMore,
+    loadMoreAsync,
     reload: useMemoizedFn(reload),
     reloadAsync: useMemoizedFn(reloadAsync),
     mutate: setFinalData,

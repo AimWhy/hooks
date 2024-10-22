@@ -38,6 +38,8 @@ $ npm install --save ahooks
 $ yarn add ahooks
 # or
 $ pnpm add ahooks
+# or
+$ bun add ahooks
 ```
 
 ## 🔨 Usage
@@ -71,7 +73,7 @@ Thanks to all the contributors:
 
 ## 👥 Discuss
 
-<img src="https://user-images.githubusercontent.com/12526493/141303172-68f25577-c7b7-4ff7-bdff-25fd0f4d5214.JPG" width="300" />
+<img src="https://github.com/alibaba/hooks/assets/49217418/ba636378-1dff-4754-bfe6-46923417cd3b" width="200" style='display:inline' /><img src="https://github.com/alibaba/hooks/assets/49217418/93a169ce-f9d1-4a66-a829-9f16e790ee28" width="200" style='display:inline' /><img src="https://github.com/alibaba/hooks/assets/49217418/d30d80c7-eb16-4522-acab-f2d48513464a" width="200" style='display:inline' />
 
 [1]: https://www.npmjs.com/package/ahooks
 [2]: https://npmjs.org/package/ahooks
